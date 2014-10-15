@@ -14,16 +14,19 @@ public class MyNN extends Classifier{
 		public double[] output, error, bias;
 		public ActivationFunction function;
 		public double[][] weight;
+		public double[][] prevWeight;
 		public int size;
 		
 		public Layer(int inputSize){ // untuk input layer
-			output = new double[inputSize]; error = null; weight = null; function = null; bias = null;
+			output = new double[inputSize]; error = null; weight = null; prevWeight = null; function = null; bias = null;
 			size = inputSize;
 		}
 		
 		public Layer(int size, int inputSize, ActivationFunction func){ // untuk hidden & output layer
-			output = new double[inputSize]; error = new double[inputSize]; 
-			weight = new double[size][inputSize]; function = func; bias = new double[inputSize];
+			output = new double[size]; error = new double[size]; 
+			weight = new double[size][inputSize];
+			prevWeight = new double[size][inputSize];
+			function = func; bias = new double[size];
 			this.size = size;
 		}
 	}
@@ -37,13 +40,13 @@ public class MyNN extends Classifier{
 	
 	ArrayList<Layer> layers = new ArrayList<>();
 	
-	private static final double MAX_RANDOM = 2;
+	private static final double MAX_RANDOM = 1;
 	private static final double MAX_RANDOM_RANGE = MAX_RANDOM * 2;
-	public int maxEpoch = 100;
-	public double learnRate = 2;
+	public int maxEpoch = 500;
+	public final double learnRate = 0.3;
 	public double errorMin = 0.01;
 	public double convergenceError = 0.01;
-	public double momentum = 0.5;
+	public double momentum = 0.7;
 	
 	public MyNN(int inputSize, ClassificationFunction classFunc){
 		this.classFunc = classFunc;
@@ -58,34 +61,27 @@ public class MyNN extends Classifier{
 	}
 	
 	private void backpropagationLearn(Instances data){
-		double error = 0, lastError; int epoch = 0;
+		double error; int epoch = 0;
 		
-		double learnRate = this.learnRate;
+		//double learnRate = this.learnRate;
 		
 		//double[] err, value, nextErr, b; double[][] weight;
 		Layer current, prev, next;
 		do{
-			lastError = error;
-			error = 0;
-			
+					
 			for (int i = 0; i < data.numInstances(); ++i){
 				// classify
 				double y = data.instance(i).classValue();
 				double o = classifyInstance(data.instance(i));
 				double e = y - o;
-				error += Math.abs(e);
 				
 				// backpropagate
-				// count output error
-				
-				System.out.printf("%s : %d\n", data.instance(i).toString(), (int) e);
-				
+				// count output layer error
+								
 				current = layers.get(layers.size()-1);
 				
 				for (int j = 0; j < current.size; ++j){
 					current.error[j] = current.output[j]*(1-current.output[j])*e; // TODO edit derivation error
-					
-					//System.out.printf("v %.3f d %.3f y %.3f o %.3f e %.3f\n", value[j], e, y, o, err[j]);
 				}
 				
 				// count hidden error
@@ -101,8 +97,6 @@ public class MyNN extends Classifier{
 						}
 						
 						current.error[j] = current.output[j] * (1-current.output[j]) * sum;
-						
-						//System.out.printf("v %.3f e %.5f\n", value[j], err[j]);
 					}
 				}
 				
@@ -114,9 +108,10 @@ public class MyNN extends Classifier{
 					for (int r = 0; r < current.size; ++r){
 						for (int c = 0; c < prev.size; ++c){
 							double update = learnRate * current.error[r] * prev.output[c];
-							current.weight[r][c] += update;
+							double dw = current.weight[r][c] - current.prevWeight[r][c];
+							current.prevWeight[r][c] = current.weight[r][c];
 							
-							//System.out.printf("w %d%d%d: e %.3f v %.3f u %.3f\n", w,row, col, err[row], value[col], update);
+							current.weight[r][c] += update + (momentum * dw);
 						}
 					}
 				}
@@ -128,8 +123,6 @@ public class MyNN extends Classifier{
 					for (int j = 0; j < current.size; j++){
 						double update = learnRate * current.error[j]; 
 						current.bias[j] += update;
-						
-						//System.out.printf("b: %.3f %.3f\n", b[j], update);
 					}
 				}
 				
@@ -137,23 +130,36 @@ public class MyNN extends Classifier{
 				
 			}
 			epoch += 1;
+
+			// recalculate error
+			
+			error = 0;
+			
+			for (int i = 0; i < data.numInstances(); ++i){
+				// classify
+				double y = data.instance(i).classValue();
+				double o = classifyInstance(data.instance(i));
+				double e = y - o;
+				error += Math.abs(e);
+			}
+			
+			error = error / data.numInstances();
 			
 			System.out.printf("epoch %d: %.2f\n", epoch, error);
-			print();
-			learnRate *= 0.95;
-		}while(!(error < errorMin || learnRate < 0.01));
-		//print();
+		}while(error > errorMin && epoch < maxEpoch);
 	}
 	
 	private void randomize(){
 		Random rand = new Random();
 		for (int l = 1; l < layers.size(); ++l){
 			double[][] weight = layers.get(l).weight;
+			double[][] prevWeight = layers.get(l).prevWeight;
 			double[] bias = layers.get(l).bias;
 			
 			for (int i = 0; i < weight.length; ++i){
 				for (int j = 0; j < weight[0].length; ++j){
 					weight[i][j] = (rand.nextFloat() * MAX_RANDOM_RANGE) - MAX_RANDOM;
+					prevWeight[i][j] = weight[i][j];
 				}
 			}
 			
