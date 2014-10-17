@@ -10,6 +10,8 @@ import weka.core.Instances;
 public class MyNN extends Classifier{
 	private static final long serialVersionUID = 5510340142122736634L;
 	
+	public enum ANNType {PTR, BATCH_GRADIENT_DESCENT, DELTA_RULE, BACKPROPAGATION}
+	
 	private static class Layer{
 		public double[] output, error, bias;
 		public ActivationFunction function;
@@ -38,18 +40,21 @@ public class MyNN extends Classifier{
 //	ArrayList<double[][]> weights = new ArrayList<>();
 	ClassificationFunction classFunc;
 	
-	ArrayList<Layer> layers = new ArrayList<>();
+	ArrayList<Layer> layers = new ArrayList<Layer>();
 	
 	private static final double MAX_RANDOM = 1;
 	private static final double MAX_RANDOM_RANGE = MAX_RANDOM * 2;
+	private ANNType type;
 	public int maxEpoch = 500;
 	public final double learnRate = 0.3;
 	public double errorMin = 0.01;
 	public double convergenceError = 0.01;
 	public double momentum = 0.7;
 	
-	public MyNN(int inputSize, ClassificationFunction classFunc){
+	
+	public MyNN(int inputSize, ClassificationFunction classFunc, ANNType type){
 		this.classFunc = classFunc;
+		this.type = type;
 		
 		layers.add(new Layer(inputSize));
 	}
@@ -58,6 +63,72 @@ public class MyNN extends Classifier{
 		int prevSize = layers.get(layers.size()-1).size;
 		
 		layers.add(new Layer(size,prevSize,func));
+	}
+	
+	private void PTR(Instances data){
+		double error; int epoch = 0;
+		
+		Layer current, prev;
+		do{
+					
+			for (int i = 0; i < data.numInstances(); ++i){
+				// classify
+				double y = data.instance(i).classValue();
+				double o = classifyInstance(data.instance(i));
+				double e = y - o;
+				
+				// update weight
+				
+				for (int w = 1; w < layers.size(); ++w){
+					current = layers.get(w); prev = layers.get(w-1);
+					
+					for (int r = 0; r < current.size; ++r){
+						for (int c = 0; c < prev.size; ++c){
+							double update = learnRate * e * prev.output[c];
+							double dw = current.weight[r][c] - current.prevWeight[r][c];
+							current.prevWeight[r][c] = current.weight[r][c];
+							
+							current.weight[r][c] += update + (momentum * dw);
+						}
+					}
+				}
+				
+				// update bias
+				for (int w = 1; w < layers.size(); ++w){
+					current = layers.get(w);
+					
+					for (int j = 0; j < current.size; j++){
+						double update = learnRate * e; 
+						current.bias[j] += update;
+					}
+				}
+			}
+			epoch += 1;
+
+			// recalculate error
+			
+			error = 0;
+			
+			for (int i = 0; i < data.numInstances(); ++i){
+				// classify
+				double y = data.instance(i).classValue();
+				double o = classifyInstance(data.instance(i));
+				double e = y - o;
+				error += Math.abs(e);
+			}
+			
+			error = error / data.numInstances();
+			
+			System.out.printf("epoch %d: %.2f\n", epoch, error);
+		}while(error > errorMin && epoch < maxEpoch);
+	}
+	
+	private void batchGradientDescent(Instances data){
+		//NOT IMPLEMENTED YET
+	}
+	
+	private void deltaRule(Instances data){
+		//NOT IMPLEMENTED YET
 	}
 	
 	private void backpropagationLearn(Instances data){
@@ -207,7 +278,22 @@ public class MyNN extends Classifier{
 		randomize();
 		print();
 		// start learning
-		backpropagationLearn(data);
+		switch(type){
+		case PTR:
+			PTR(data);
+			break;
+		case BATCH_GRADIENT_DESCENT:
+			batchGradientDescent(data);
+			break;
+		case DELTA_RULE:
+			deltaRule(data);
+			break;
+		case BACKPROPAGATION:
+			backpropagationLearn(data);
+			break;
+		
+		}
+		
 	}
 	
 	private void copyInput(Instance instance){

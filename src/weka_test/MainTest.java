@@ -7,14 +7,15 @@ import weka.core.Instances;
 
 public class MainTest {
 	public static void main(String[] args) throws Exception{
-		FileReader freader = new FileReader("data/xor.arff");
+		FileReader freader = new FileReader("data/and.arff");
 		Instances data = new Instances(freader);
 		data.setClassIndex(data.numAttributes()-1);
 		freader.close();
 		
-		MyNN nn = new MyNN(2, new MyNN.IndexFunction(0));
-		nn.addLayer(2, new MyNN.SigmoidFunction());
-		nn.addLayer(1, new MyNN.SigmoidFunction());
+		//Test PTR
+		MyNN nn = new MyNN(2, new MyNN.IndexFunction(0), MyNN.ANNType.PTR);
+		//nn.addLayer(2, new MyNN.SigmoidFunction());
+		nn.addLayer(1, new MyNN.HardLimFunction());
 		
 
 		nn.buildClassifier(data);
