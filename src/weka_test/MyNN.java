@@ -78,7 +78,6 @@ public class MyNN extends Classifier{
 				double e = y - o;
 				
 				// update weight
-				
 				for (int w = 1; w < layers.size(); ++w){
 					current = layers.get(w); prev = layers.get(w-1);
 					
@@ -124,11 +123,118 @@ public class MyNN extends Classifier{
 	}
 	
 	private void batchGradientDescent(Instances data){
-		//NOT IMPLEMENTED YET
+		double error; int epoch = 0;
+		Layer current, prev;
+		
+		do {
+			double[] e = new double[data.numInstances()];
+			
+			// classify
+			for (int i = 0; i < data.numInstances(); i++) {
+				double y = data.instance(i).classValue();
+				double o = classifyInstance(data.instance(i));
+				e[i] = y - o;
+			}
+			
+			double E = 0;
+			
+			// update weight
+			for (int w = 1; w < layers.size(); ++w){
+				current = layers.get(w); prev = layers.get(w-1);
+
+				for (int i = 0; i < data.numInstances(); i++) {
+					for (int j = 0; j < prev.size; j++) {
+						E += e[i] * prev.output[j];
+					}
+				}
+				
+				for (int r = 0; r < current.size; ++r){
+					for (int c = 0; c < prev.size; ++c){
+						double update = learnRate * E / data.numInstances();
+						double dw = current.weight[r][c] - current.prevWeight[r][c];
+						current.prevWeight[r][c] = current.weight[r][c];
+						
+						current.weight[r][c] += update + (momentum * dw);
+					}
+				}
+			}
+			
+			// update bias
+			for (int w = 1; w < layers.size(); ++w){
+				current = layers.get(w);
+				
+				for (int j = 0; j < current.size; j++){
+					double update = learnRate * E / data.numInstances(); 
+					current.bias[j] += update;
+				}
+			}
+			
+			epoch += 1;
+			
+			// recalculate error
+			error = 0;
+			for (int i = 0; i < data.numInstances(); ++i){
+				error += e[i] * e[i];
+			}
+			
+			error /= 2.0;
+			
+			System.out.printf("epoch %d: %.2f\n", epoch, error);
+		} while(error > errorMin && epoch < maxEpoch);
 	}
 	
 	private void deltaRule(Instances data){
-		//NOT IMPLEMENTED YET
+		double error; int epoch = 0;
+		
+		Layer current, prev;
+		do{
+					
+			for (int i = 0; i < data.numInstances(); ++i){
+				// classify
+				double y = data.instance(i).classValue();
+				double o = classifyInstance(data.instance(i));
+				double e = y - o;
+				
+				// update weight
+				for (int w = 1; w < layers.size(); ++w){
+					current = layers.get(w); prev = layers.get(w-1);
+					
+					for (int r = 0; r < current.size; ++r){
+						for (int c = 0; c < prev.size; ++c){
+							double update = learnRate * e * prev.output[c];
+							double dw = current.weight[r][c] - current.prevWeight[r][c];
+							current.prevWeight[r][c] = current.weight[r][c];
+							
+							current.weight[r][c] += update + (momentum * dw);
+						}
+					}
+				}
+				
+				// update bias
+				for (int w = 1; w < layers.size(); ++w){
+					current = layers.get(w);
+					
+					for (int j = 0; j < current.size; j++){
+						double update = learnRate * e; 
+						current.bias[j] += update;
+					}
+				}
+			}
+			epoch += 1;
+
+			// recalculate error
+			error = 0;
+			for (int i = 0; i < data.numInstances(); ++i){
+				double y = data.instance(i).classValue();
+				double o = classifyInstance(data.instance(i));
+				double e = y - o;
+				error += e * e;
+			}
+			
+			error /= 2.0;
+			
+			System.out.printf("epoch %d: %.2f\n", epoch, error);
+		}while(error > errorMin && epoch < maxEpoch);
 	}
 	
 	private void backpropagationLearn(Instances data){
@@ -318,8 +424,11 @@ public class MyNN extends Classifier{
 					value += current.weight[i][j] * prev.output[j];
 				}
 				
-				
-				current.output[i] = current.function.activate(value);
+				if (type.equals(ANNType.DELTA_RULE)) {
+					current.output[i] = value;
+				} else {
+					current.output[i] = current.function.activate(value);
+				}
 			}
 		}
 		
