@@ -136,7 +136,7 @@ public class MyNN extends Classifier{
 				e[i] = y - o;
 			}
 			
-			double E = 0;
+			double[] E = new double[layers.get(0).size];
 			
 			// update weight
 			for (int w = 1; w < layers.size(); ++w){
@@ -144,32 +144,31 @@ public class MyNN extends Classifier{
 
 				for (int i = 0; i < data.numInstances(); i++) {
 					for (int j = 0; j < prev.size; j++) {
-						E += e[i] * prev.output[j];
+						E[j] += e[i] * data.instance(i).value(j);
 					}
 				}
 				
 				for (int r = 0; r < current.size; ++r){
 					for (int c = 0; c < prev.size; ++c){
-						double update = learnRate * E / data.numInstances();
+						double update = learnRate * E[c];
 						double dw = current.weight[r][c] - current.prevWeight[r][c];
 						current.prevWeight[r][c] = current.weight[r][c];
 						
 						current.weight[r][c] += update + (momentum * dw);
 					}
-				}
-			}
-			
-			// update bias
-			for (int w = 1; w < layers.size(); ++w){
-				current = layers.get(w);
-				
-				for (int j = 0; j < current.size; j++){
-					double update = learnRate * E / data.numInstances(); 
-					current.bias[j] += update;
+					
+					//double update = learnRate * E[0]; 
+					//current.bias[r] += update;
 				}
 			}
 			
 			epoch += 1;
+			
+			for (int i = 0; i < data.numInstances(); i++) {
+				double y = data.instance(i).classValue();
+				double o = classifyInstance(data.instance(i));
+				e[i] = y - o;
+			}
 			
 			// recalculate error
 			error = 0;

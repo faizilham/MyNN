@@ -15,12 +15,12 @@ public class MainTest {
 		freader.close();
 
 		//Test PTR
-		MyNN nn = new MyNN(2, new MyNN.IndexFunction(0), MyNN.ANNType.PTR);
-		nn.addLayer(1, new MyNN.HardLimFunction());
+		//MyNN nn = new MyNN(2, new MyNN.IndexFunction(0), MyNN.ANNType.PTR);
+		//nn.addLayer(1, new MyNN.HardLimFunction());
 
 		// Test Batch
-		//MyNN nn = new MyNN(2, new MyNN.IndexFunction(0), MyNN.ANNType.BATCH_GRADIENT_DESCENT);
-		//nn.addLayer(1, new MyNN.HardLimFunction());
+		MyNN nn = new MyNN(2, new MyNN.IndexFunction(0), MyNN.ANNType.BATCH_GRADIENT_DESCENT);
+		nn.addLayer(1, new MyNN.SigmoidFunction());
 		
 		// Test Delta
 		//MyNN nn = new MyNN(2, new MyNN.IndexFunction(0), MyNN.ANNType.DELTA_RULE);
